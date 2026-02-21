@@ -1,11 +1,4 @@
-{  $Id$  }
 {
- /***************************************************************************
-                            MissingPropertiesDlg.pas
-                            ------------------------
-
- ***************************************************************************/
-
  ***************************************************************************
  *                                                                         *
  *   This source is free software; you can redistribute it and/or modify   *
@@ -32,8 +25,8 @@ unit MissingPropertiesDlg;
 interface
 
 uses
-  // FCL+LCL
   Classes, SysUtils, Contnrs,
+  // LCL
   Forms, Controls, Grids, LResources, Dialogs, Buttons, StdCtrls, ExtCtrls,
   // LazUtils
   LazFileUtils, LazUTF8, LazLoggerBase, AvgLvlTree,
@@ -50,10 +43,9 @@ uses
   // IdeProject
   IdeProjectStrConsts,
   // IDE
-  LazarusIDEStrConsts, EditorOptions, CheckLFMDlg, Project, SourceMarks,
+  LazarusIDEStrConsts, EditorOptions, CheckLFMDlg, SourceMarks,
   // Converter
-  ConverterTypes, ConvertSettings, ReplaceNamesUnit,
-  ConvCodeTool, FormFileConv, UsedUnits;
+  ConvertBase, ConverterTypes, ReplaceNamesUnit, ConvCodeTool, FormFileConv, UsedUnits;
 
 type
 

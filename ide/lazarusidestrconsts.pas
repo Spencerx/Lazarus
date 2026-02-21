@@ -644,12 +644,11 @@ resourcestring
   lisConvDelphiUnitnameExistsInLCL = 'Unitname exists in LCL';
   lisConvDelphiUnitWithNameExistsInLCL = 'LCL already has a unit with name %s.'
     +' Delete local file %s?';
-  lisConvDelphiPackageNameExists = 'Package name exists';
+  //lisConvDelphiPackageNameExists = 'Package name already exists';
   lisConvDelphiProjOmittedUnit = 'Omitted unit %s from project';
   lisConvDelphiAddedPackageDependency = 'Added Package %s as a dependency.';
   lisConvDelphiPackageRequired = 'Package %s is required but not installed in Lazarus! Install it later.';
-  lisConvDelphiThereIsAlreadyAPackageWithTheNamePleaseCloseThisPa = 'There is '
-    +'already a package with the name "%s"%sPlease close this package first.';
+  lisConvDelphiThereIsAlreadyAPackage = 'There is already a package with the name "%s"';
   lisConvUnknownProps = 'Unknown properties';
   lisConvTypesToReplace = 'Types to replace';
   lisConvTypeReplacements = 'Type Replacements';
