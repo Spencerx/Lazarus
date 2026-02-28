@@ -32,7 +32,7 @@ interface
 
 uses
   // FCL
-  Classes, SysUtils, Math, TypInfo, contnrs,
+  Classes, SysUtils, Math, TypInfo, Contnrs,
   // LCL
   LResources, Forms, Controls, Dialogs, Buttons, StdCtrls, ExtCtrls,
   // LazUtils

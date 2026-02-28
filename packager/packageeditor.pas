@@ -53,9 +53,11 @@ uses
   InputHistory,
   // IdeConfig
   EnvironmentOpts, SearchPathProcs, ParsedCompilerOpts, CompilerOptions, DialogProcs,
+  // IdePackager
+  PackageSystem, PackageDefs, EditablePackage,
   // IDE
-  MainBase, LazarusIDEStrConsts, IDEDefs, EditablePackage, EnvGuiOptions,
-  PackageSystem, PackageDefs, AddToPackageDlg, AddPkgDependencyDlg, ComponentPalette,
+  MainBase, LazarusIDEStrConsts, IDEDefs, EnvGuiOptions,
+  AddToPackageDlg, AddPkgDependencyDlg, ComponentPalette,
   AddFPMakeDependencyDlg, ProjPackChecks, PkgVirtualUnitEditor, CleanPkgDeps,
   MissingPkgFilesDlg, ProjPackFilePropGui, ProjPackEditing, BasePkgManager;
   

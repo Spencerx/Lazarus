@@ -58,9 +58,11 @@ uses
   EnvironmentOpts, SearchPathProcs, TransferMacros, RecentListProcs,
   IDEProcs, DialogProcs, ParsedCompilerOpts, CompilerOptions, IdeConfStrConsts,
   // IdePackager
-  IdePackagerStrConsts, PackageDefs, PackageSystem,
+  IdePackagerStrConsts, PackageDefs, PackageSystem, BasePkgManager,
   // IdeProject
   IdeProjectStrConsts, Project, ProjectDefs,
+  // Converter
+  ConvCodeTool,
   // IDE
   IDEProtocol, LazarusIDEStrConsts, NewDialog,
   NewProjectDlg, MainBase, MainBar, MainIntf,
@@ -68,8 +70,7 @@ uses
   EditorOptions, CustomFormEditor, ControlSelection,
   FormEditor, EmptyMethodsDlg, BaseDebugManager, BuildManager,
   EditorMacroListViewer, BuildModesManager, ViewUnit_Dlg, CheckLFMDlg,
-  etMessagesWnd, DebugManager, EnvGuiOptions, ConvCodeTool,
-  BasePkgManager, Designer, DesignerProcs;
+  etMessagesWnd, DebugManager, EnvGuiOptions, Designer, DesignerProcs;
 
 type
 
