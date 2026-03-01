@@ -249,10 +249,11 @@ type
     procedure DestroyWnd; override;
     procedure InternalSetFilter(const AValue: string);
     function DoDefaultFilterItem(const ACaption: string;
-      const ItemData: Pointer): Boolean;
+      const ItemData: Pointer): Boolean; virtual;
     function DoFilterEvents(const ACaption: string;
       ItemData: Pointer; out Done: Boolean): Boolean;
-    function DoFilterItem(const ACaption: string; ItemData: Pointer): Boolean;
+    function DoFilterItem(const ACaption: string;
+      ItemData: Pointer): Boolean; virtual;
     procedure EditKeyDown(var Key: Word; Shift: TShiftState); override;
     procedure EditChange; override;
     procedure BuddyClick; override;
