@@ -5773,10 +5773,6 @@ begin
   if (uWidth <> HSize) or (uHeight <> VSize) then
     PGtkLayout(aWidget)^.set_size(HSize, VSize);
 
-  if not (csDesigning in ACtl.LCLObject.ComponentState) then
-    exit;
-
-  //designer (at least docked form editor) need this
   if not ACtl.InUpdate then
   begin
     (*IMPORTANT:
@@ -5923,11 +5919,14 @@ var
   AParent: PGtkWidget;
   AParentObject: TGtk3Widget;
   Notebook: PGtkWidget;
+  OuterNotebook: PGtkWidget;
   Alloc: TGtkAllocation;
   vX, vY: integer;
+  ATranslated: boolean;
 begin
   vX := 0;
   vY := 0;
+  ATranslated := False;
   Result := Rect(0, 0, 0, 0);
 
   if not WidgetMapped then
@@ -5961,15 +5960,28 @@ begin
    For BOTTOM/RIGHT tabs the content starts at (0,0) so vX=vY=0 and the
    allocation is already correct - the subtraction is a no-op. zeljan*)
   Notebook := gtk_widget_get_ancestor(FCentralWidget, gtk_notebook_get_type());
-  if Assigned(Notebook) and
-     gtk_widget_translate_coordinates(FCentralWidget, Notebook, 0, 0, @vX, @vY) then
-    Result := Rect(0, 0, Alloc.width - vX, Alloc.height - vY)
-  else
+  OuterNotebook := nil;
+  {Gtk reports wrong size if we have GtkNotebook inside GtkNotebook,
+  so translation MUST be called ONLY in case our notebook parent is
+  another GtkNotebok direct parent. This is gtk bug, so this is how we pass it.}
+  if Assigned(Notebook) then
+    OuterNotebook := gtk_widget_get_ancestor(
+      gtk_widget_get_parent(Notebook), gtk_notebook_get_type());
+  if Assigned(Notebook) and Assigned(OuterNotebook) and
+      gtk_widget_translate_coordinates(FCentralWidget, Notebook, 0, 0, @vX, @vY) then
+  begin
+    ATranslated := True;
+    Result := Rect(0, 0, Alloc.width - vX, Alloc.height - vY);
+  end else
     Result := Rect(0, 0, Alloc.width, Alloc.height);
 
   {$IFDEF GTK3DEBUGLAYOUT}
-  writeln(Format('getClientRect[TGtk3Page] %s: vY=%d OrigH=%d ClientH=%d',
-    [dbgsName(LCLObject), vY, Alloc.height, Result.Bottom]));
+  writeln(Format('getClientRect[TGtk3Page] %s: ' +
+    'CW_w=%d CW_h=%d  NB=%s OutNB=%s  vX=%d vY=%d  translated=%s  -> w=%d h=%d',
+    [dbgsName(LCLObject), Alloc.width, Alloc.height,
+     dbghex(PtrUInt(Notebook)), dbghex(PtrUInt(OuterNotebook)),
+     vX, vY, BoolToStr(ATranslated, 'YES', 'no'),
+     Result.Right, Result.Bottom]));
   {$ENDIF}
 end;
 
