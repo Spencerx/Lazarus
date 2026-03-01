@@ -11120,7 +11120,7 @@ var
   ARect: TGdkRectangle;
   Geometry: TGdkGeometry;
   AHints: TGdkWindowHints;
-  AFixedWidthHeight: Boolean;
+  AFixedWidthHeight, AIsWayland: Boolean;
   AForm: TCustomForm;
   Alloc:TGtkAllocation;
   x, y: gint;
@@ -11131,6 +11131,7 @@ begin
   ARect.y := ATop;
   ARect.width := AWidth;
   ARect.Height := AHeight;
+  AIsWayland := Gtk3WidgetSet.IsWayland;
   try
     Widget^.get_allocation(@Alloc);
     {$IFDEF GTK3DEBUGFORMS}
@@ -11148,7 +11149,10 @@ begin
     if Gtk3IsGtkWindow(fWidget)
         and not (csDesigning in AForm.ComponentState) {and (AForm.Parent = nil) and (AForm.ParentWindow = 0)} then
     begin
-      AFixedWidthHeight := AForm.BorderStyle in [bsDialog, bsSingle, bsToolWindow];
+      AFixedWidthHeight := (AForm.BorderStyle in [bsDialog, bsSingle, bsToolWindow]);
+      if AIsWayland and AFixedWidthHeight then
+        PGtkWindow(Widget)^.set_resizable(False)
+      else
       with Geometry do
       begin
         if not AFixedWidthHeight and (AForm.Constraints.MinWidth > 0) then
@@ -11158,7 +11162,7 @@ begin
         if not AFixedWidthHeight and (AForm.Constraints.MaxWidth > 0) then
           max_width := AForm.Constraints.MaxWidth
         else
-        max_width := AForm.Width;
+          max_width := AForm.Width;
         if not AFixedWidthHeight and (AForm.Constraints.MinHeight > 0) then
           min_height := AForm.Constraints.MinHeight
         else
@@ -11174,12 +11178,13 @@ begin
         height_inc := 1;
         min_aspect := 0;
         max_aspect := 1;
-        win_gravity := PGtkWindow(Widget)^.get_gravity
+        win_gravity := PGtkWindow(Widget)^.get_gravity;
       end;
 
-      if AFixedWidthHeight then
+      if AFixedWidthHeight and not AIsWayland then
         PGtkWindow(Widget)^.set_geometry_hints(nil, @Geometry,
           [GDK_HINT_POS, GDK_HINT_MIN_SIZE, GDK_HINT_MAX_SIZE])
+
       else
       begin
         if AForm.BorderStyle <> bsNone then
