@@ -38,7 +38,7 @@ uses
 // To get as little as posible circles,
 // uncomment only when needed for registration
 ////////////////////////////////////////////////////
-  Classes, Graphics, Controls, Forms, LCLType, LCLProc,
+  Classes, Graphics, Controls, Forms, LCLType, LCLProc, LMessages,
 ////////////////////////////////////////////////////
   WSLCLClasses, WSControls, WSForms, WSProc,
   LazGtk3, LazGdk3, LazGLib2, gtk3widgets, gtk3int, gtk3objects;
@@ -128,6 +128,7 @@ type
   published
     class function  CreateHandle(const AWinControl: TWinControl;
       const AParams: TCreateParams): TLCLHandle; override;
+    class procedure ShowHide(const AWinControl: TWinControl); override;
   end;
 
   { TWSScreen }
@@ -656,6 +657,43 @@ class function TGtk3WSHintWindow.CreateHandle(const AWinControl: TWinControl;
   const AParams: TCreateParams): TLCLHandle;
 begin
   Result := TLCLHandle(TGtk3HintWindow.Create(AWinControl, AParams));
+end;
+
+class procedure TGtk3WSHintWindow.ShowHide(const AWinControl: TWinControl);
+var
+  AWidget: PGtkWidget;
+  procedure SetPassThroughRecursive(AGdkWindow: PGdkWindow);
+  var
+    AChildren: PGList;
+    AItem: PGList;
+  begin
+    if not Gtk3IsGdkWindow(AGdkWindow) then
+      exit;
+    AGdkWindow^.set_pass_through(True);
+    AChildren := AGdkWindow^.get_children;
+    AItem := AChildren;
+    while AItem <> nil do
+    begin
+      SetPassThroughRecursive(PGdkWindow(AItem^.data));
+      AItem := AItem^.next;
+    end;
+    g_list_free(AChildren);
+  end;
+begin
+  if AWinControl.HandleObjectShouldBeVisible then
+  begin
+    AWidget := TGtk3HintWindow(AWinControl.Handle).Widget;
+    if GTK3WidgetSet.IsWayland then // ref.to #42033, X11 not need this (it lead to incorrect positioning)
+      PGtkWindow(AWidget)^.set_transient_for(GetActiveGtkWindow);
+
+    AWidget^.show_all;
+
+    if Gtk3IsGdkWindow(AWidget^.window) and
+      (AWinControl.Perform(LM_NCHITTEST, 0, 0) = HTTRANSPARENT) then
+    SetPassThroughRecursive(AWidget^.window);
+  end else
+    TGtk3HintWindow(AWinControl.Handle).Hide;
+
 end;
 
 end.

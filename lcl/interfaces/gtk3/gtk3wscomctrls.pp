@@ -83,6 +83,7 @@ type
   TGtk3WSStatusBar = class(TWSStatusBar)
   published
     class function CreateHandle(const AWinControl: TWinControl; const AParams: TCreateParams): TLCLHandle; override;
+    class procedure GetPreferredSize(const AWinControl: TWinControl; var PreferredWidth, PreferredHeight: integer; WithThemeSpace: Boolean); override;
     class procedure PanelUpdate(const AStatusBar: TStatusBar; PanelIndex: integer); override;
     class procedure SetPanelText(const AStatusBar: TStatusBar; PanelIndex: integer); override;
     class procedure Update(const AStatusBar: TStatusBar); override;
@@ -1269,6 +1270,25 @@ var
 begin
   AStatusBar := TGtk3StatusBar.Create(AWinControl, AParams);
   Result := TLCLHandle(AStatusBar);
+end;
+
+class procedure TGtk3WSStatusBar.GetPreferredSize(const AWinControl: TWinControl;
+  var PreferredWidth, PreferredHeight: integer; WithThemeSpace: Boolean);
+var
+  ABar: TGtk3StatusBar;
+  nat_h: gint;
+begin
+  PreferredWidth := 0;
+  PreferredHeight := 0;
+  if not WSCheckHandleAllocated(AWinControl, 'GetPreferredSize') then
+    Exit;
+  ABar := TGtk3StatusBar(AWinControl.Handle);
+  if not Assigned(ABar.GetBox) then
+    Exit;
+  nat_h := 0;
+  gtk_widget_get_preferred_height(ABar.GetBox, @PreferredHeight, @nat_h);
+  if nat_h > PreferredHeight then
+    PreferredHeight := nat_h;
 end;
 
 class procedure TGtk3WSStatusBar.PanelUpdate(const AStatusBar: TStatusBar;

@@ -826,6 +826,7 @@ type
   public
     destructor Destroy; override;
     function getClientOffset: TPoint; override;
+    function GetBox: PGtkWidget;
     procedure InitializeWidget; override;
     procedure PanelUpdate(AStatusBar: TStatusBar; APanelIndex: Integer);
     procedure SetPanelText(const AText: string; const APanelIndex: integer);
@@ -1072,8 +1073,6 @@ type
   TGtk3HintWindow = class(TGtk3Window)
   protected
     function CreateWidget(const {%H-}Params: TCreateParams):PGtkWidget; override;
-  public
-    procedure InitializeWidget; override;
   end;
 
   { TGtk3Dialog }
@@ -3888,6 +3887,11 @@ begin
   Result := Point(0, 0);
 end;
 
+function TGtk3StatusBar.GetBox: PGtkWidget;
+begin
+  Result := FBox;
+end;
+
 procedure TGtk3StatusBar.InitializeWidget;
 var
   AProvider: PGtkCssProvider;
@@ -4181,15 +4185,28 @@ begin
        ACtl.LCLObject.Width, ACtl.LCLObject.Height, BoolToStr(ACtl.InUpdate, True),
        LongInt(ACtl.FWidgetType)]));
   {$ENDIF}
+  {$IFDEF GTK3DEBUGLAYOUT}
+  if Assigned(ACtl.LCLObject) and (ACtl is TGtk3StatusBar) then
+    writeln(Format('PanelLayoutSizeAllocate[TStatusBar] %s  gdk w=%d h=%d  LCL H=%d  ClientH=%d  InUpd=%s  mapped=%s',
+      [dbgsName(ACtl.LCLObject), AGdkRect^.width, AGdkRect^.height,
+       ACtl.LCLObject.Height, ACtl.LCLObject.ClientHeight,
+       BoolToStr(ACtl.InUpdate, True), BoolToStr(AWidget^.get_mapped, True)]));
+  {$ENDIF}
   if (uWidth <> HSize) or (uHeight <> VSize) then
     PGtkLayout(aWidget)^.set_size(HSize, VSize);
 
-  if not TGtk3Widget(Data).InUpdate and TGtk3Widget(Data).LCLObject.ClientRectNeedsInterfaceUpdate then
+  if not ACtl.InUpdate then
   begin
-    {$IFDEF GTK3DEBUGRESIZE}
-    writeln('===> PanelLayoutSizeAllocate is calling  TGtk3Widget(Data).LCLObject.DoAdjustClientRectChange !!!! Visible=',TGtk3Widget(Data).Visible);
-    {$ENDIF}
-    TGtk3Widget(Data).LCLObject.DoAdjustClientRectChange;
+    if ACtl.LCLObject.ClientRectNeedsInterfaceUpdate or
+       (ACtl.LCLObject.Height <> AGdkRect^.Height) then
+    begin
+      if not ACtl.LCLObject.ClientRectNeedsInterfaceUpdate then
+        ACtl.LCLObject.InvalidateClientRectCache(False);
+      {$IFDEF GTK3DEBUGRESIZE}
+      writeln('===> PanelLayoutSizeAllocate is calling DoAdjustClientRectChange !!!! Visible=', ACtl.Visible);
+      {$ENDIF}
+      ACtl.LCLObject.DoAdjustClientRectChange;
+    end;
   end;
 end;
 
@@ -11296,34 +11313,6 @@ begin
   FHasPaint := True;
   FWidgetType := [wtHintWindow];
   Result := inherited CreateWidget(Params);
-end;
-
-procedure TGtk3HintWindow.InitializeWidget;
-  procedure SetPassThroughRecursive(AGdkWindow: PGdkWindow);
-  var
-    AChildren: PGList;
-    AItem: PGList;
-  begin
-    if not Gtk3IsGdkWindow(AGdkWindow) then
-      exit;
-    AGdkWindow^.set_pass_through(True);
-    AChildren := AGdkWindow^.get_children;
-    AItem := AChildren;
-    while AItem <> nil do
-    begin
-      SetPassThroughRecursive(PGdkWindow(AItem^.data));
-      AItem := AItem^.next;
-    end;
-    g_list_free(AChildren);
-  end;
-begin
-  inherited InitializeWidget;
-  if GTK3WidgetSet.IsWayland then // ref.to #42033, X11 not need this (it lead to incorrect positioning)
-    PGtkWindow(Widget)^.set_transient_for(GetActiveGtkWindow);
-  PGtkWindow(Widget)^.show_all;
-  if Gtk3IsGdkWindow(Widget^.window) and
-     (LCLObject.Perform(LM_NCHITTEST, 0, 0) = HTTRANSPARENT) then
-    SetPassThroughRecursive(Widget^.window);
 end;
 
 { TGtk3Dialog }
