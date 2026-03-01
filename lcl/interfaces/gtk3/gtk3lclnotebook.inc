@@ -109,7 +109,10 @@ begin
 
   AControl := TGtk3Widget(HwndFromGtkWidget(widget));
   if not Assigned(AControl) then
+  begin
+    nat_height^ := min_h;  // nat must be >= min per GTK contract
     Exit;
+  end;
 
   //Keep min_height from the parent class: it encodes the CSS minimum for the
   //tab bar. Resetting it to 0 allowed GTK3 to hand us allocations smaller
