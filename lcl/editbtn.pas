@@ -249,9 +249,10 @@ type
     procedure DestroyWnd; override;
     procedure InternalSetFilter(const AValue: string);
     function DoDefaultFilterItem(const ACaption: string;
-      const ItemData: Pointer): Boolean; virtual;
-    function DoFilterItem(const ACaption: string;
-      ItemData: Pointer): Boolean; virtual;
+      const ItemData: Pointer): Boolean;
+    function DoFilterEvents(const ACaption: string;
+      ItemData: Pointer; out Done: Boolean): Boolean;
+    function DoFilterItem(const ACaption: string; ItemData: Pointer): Boolean;
     procedure EditKeyDown(var Key: Word; Shift: TShiftState); override;
     procedure EditChange; override;
     procedure BuddyClick; override;
@@ -1257,22 +1258,26 @@ begin
     Result := NPos>0;
 end;
 
+function TCustomControlFilterEdit.DoFilterEvents(const ACaption: string;
+  ItemData: Pointer; out Done: Boolean): Boolean;
+begin
+  Done := False;
+  Result := False;
+  // Filter with event handler if there is one.
+  if Assigned(fOnFilterItemEx) then
+    Result := fOnFilterItemEx(ACaption, ItemData, Done);
+  // Support also the old filter event without a caption.
+  if (not (Result and Done)) and Assigned(fOnFilterItem) then
+    Result := fOnFilterItem(ItemData, Done);
+end;
+
 function TCustomControlFilterEdit.DoFilterItem(const ACaption: string;
   ItemData: Pointer): Boolean;
 var
   Done: Boolean;
 begin
-  Done := False;
-  Result := False;
-
-  // Filter with event handler if there is one.
-  if Assigned(fOnFilterItemEx) then
-    Result := fOnFilterItemEx(ACaption, ItemData, Done);
-
-  // Support also the old filter event without a caption.
-  if (not (Result and Done)) and Assigned(fOnFilterItem) then
-    Result := fOnFilterItem(ItemData, Done);
-
+  // Filter with events.
+  Result := DoFilterEvents(ACaption, ItemData, Done);
   // Filter by item's caption text if needed.
   if not (Result or Done) then
     Result := DoDefaultFilterItem(ACaption, ItemData);
