@@ -13579,7 +13579,7 @@ begin
     if ((TargetType.Desc in xtAllRealTypes)
       and (ExpressionType.Desc in xtAllRealConvertibles))
     or ((TargetType.Desc in xtAllStringTypes)
-      and (ExpressionType.Desc in xtAllStringConvertibles))
+      and (ExpressionType.Desc in (xtAllStringConvertibles+[xtChar])))
     or ((TargetType.Desc in xtAllWideStringTypes)
       and (ExpressionType.Desc in xtAllWideStringCompatibleTypes))
     or ((TargetType.Desc in xtAllIntegerTypes)
@@ -13604,20 +13604,27 @@ begin
       then
         Result:=tcCompatible
       else if (TargetNode.Desc=ctnProcedureType)
-        and (TargetNode.FirstChild.FirstChild<>nil)
-        and (TargetNode.FirstChild.FirstChild.Desc=ctnIdentifier) //simple type
-        and (ExpressionType.Desc = xtPointer)
+        and ((TargetNode.FirstChild.FirstChild=nil) // only reference to procedure
+          or (TargetNode.FirstChild.FirstChild.Desc=ctnIdentifier) // simple type of func result
+        )
+        and (ExpressionType.Desc in [xtPointer, xtNil])
       then
       begin
         //if ExpressionType.Context.Node<>nil then
         //  debugln(GetIdentifier(@ExpressionType.Context.Tool.src
         //  [ExpressionType.Context.Node.StartPos]));
 
+        if TargetNode.FirstChild.FirstChild=nil then
+        begin // reference to procedure matches
+          Result:=tcCompatible;
+          exit;
+        end;
+
         try
           ExprParams:= TFindDeclarationParams.Create(Params);
+          ExprParams.Flags:=fdfDefaultForExpressions;
           ExprParams.SetIdentifier(Self, @ExpressionType.Context.Tool.src
             [ExpressionType.Context.Node.StartPos],nil);
-          ExprParams.Flags:=fdfDefaultForExpressions;
           ExprParams.ContextNode:=ExpressionType.Context.Node;
 
           ExprOfElement:=CleanExpressionType;
