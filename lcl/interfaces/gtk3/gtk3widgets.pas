@@ -6558,18 +6558,24 @@ begin
     Result := TGtkRadioMenuItem.new(nil);
     if Assigned(menuItem.Parent) then
     begin
-      ndx:=menuItem.Parent.IndexOf(MenuItem);
-      if (ndx>0) then
+      //Scan backwards to find any sibling radio item with the same GroupIndex
+      //not just ndx-1, which misses non-adjacent groups or separators between
+      ndx := menuItem.Parent.IndexOf(MenuItem) - 1;
+      while ndx >= 0 do
       begin
-        ParentMenu:=menuItem.Parent.Items[ndx-1];
-        if (ParentMenu.GroupIndex=MenuItem.GroupIndex) then
+        ParentMenu := menuItem.Parent.Items[ndx];
+        if ParentMenu.RadioItem and (ParentMenu.GroupIndex = MenuItem.GroupIndex) and
+           ParentMenu.HandleAllocated then
         begin
-          pl:=PGtkRadioMenuItem(TGtk3MenuItem(ParentMenu.Handle).Widget)^.get_group;
+          pl := PGtkRadioMenuItem(TGtk3MenuItem(ParentMenu.Handle).Widget)^.get_group;
           PGtkRadioMenuItem(Result)^.set_group(pl);
+          break;
         end;
+        dec(ndx);
       end;
     end;
-    //PGtkRadioMenuItem(Result)^.set_active(MenuItem.Checked);
+    //Safe here: signals are not connected yet, InitializeWidget connects them after CreateWidget.
+    PGtkRadioMenuItem(Result)^.set_active(MenuItem.Checked);
   end
   else
   if MenuItem.IsCheckItem and not MenuItem.HasIcon then
@@ -6714,18 +6720,21 @@ end;
 class procedure TGtk3MenuItem.MenuItemActivated({%H-}AItem: PGtkMenuItem; AData: GPointer); cdecl;
 var
   Msg: TLMessage;
+  GtkItem: TGtk3MenuItem;
 begin
-  // DebugLn('Gtk3MenuItemActivated ',dbgsName(TGtk3MenuItem(Adata)));
-  if Assigned(TGtk3MenuItem(AData).MenuItem) and (TGtk3MenuItem(AData).Lock=0) then
-  begin
-    inc(TGtk3MenuItem(AData).Lock);
-    try
-      FillChar(Msg{%H-}, SizeOf(Msg), #0);
-      Msg.Msg := LM_ACTIVATE;
-      TGtk3MenuItem(AData).MenuItem.Dispatch(Msg);
-    finally
-      dec(TGtk3MenuItem(AData).Lock);
-    end;
+  GtkItem := TGtk3MenuItem(AData);
+  if not Assigned(GtkItem.MenuItem) or (GtkItem.Lock > 0) then
+    Exit;
+  if GtkItem.MenuItem.RadioItem and  Gtk3IsRadioMenuItem(AItem) and
+     not PGtkCheckMenuItem(AItem)^.active then
+    Exit;
+  inc(GtkItem.Lock);
+  try
+    FillChar(Msg{%H-}, SizeOf(Msg), #0);
+    Msg.Msg := LM_ACTIVATE;
+    GtkItem.MenuItem.Dispatch(Msg);
+  finally
+    dec(GtkItem.Lock);
   end;
 end;
 
@@ -6744,8 +6753,15 @@ end;
 
 procedure TGtk3MenuItem.SetCheck(ACheck: boolean);
 begin
-  if Self.IsValidHandle and (lock=0)  then
-    PGtkCheckMenuItem(fWidget)^.active:=ACheck;
+  if Self.IsValidHandle then
+  begin
+    inc(Lock);
+    try
+      PGtkCheckMenuItem(fWidget)^.active := ACheck;
+    finally
+      dec(Lock);
+    end;
+  end;
 end;
 
 
