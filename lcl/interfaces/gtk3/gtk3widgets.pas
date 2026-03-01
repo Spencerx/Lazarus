@@ -5736,6 +5736,9 @@ var
   HSize,VSize: integer;
   uWidth, uHeight: guint;
   aCtl: TGtk3Widget;
+  {$IFDEF GTK3DEBUGLAYOUT}
+  FWAlloc: TGtkAllocation;
+  {$ENDIF}
 begin
   {GtkNotebook allocates ALL pages and their entire child subtrees on every
    resize. Skip immediately for unmapped (inactive) pages - no set_size, no
@@ -5756,16 +5759,53 @@ begin
        ACtl.LCLObject.Width, ACtl.LCLObject.Height, BoolToStr(ACtl.InUpdate, True),
        LongInt(ACtl.FWidgetType)]));
   {$ENDIF}
+  {$IFDEF GTK3DEBUGLAYOUT}
+  if Assigned(ACtl.LCLObject) then
+  begin
+    TGtk3Page(ACtl).FWidget^.get_allocation(@FWAlloc);
+    writeln(Format('TabSheetLayoutSizeAllocate %s  FCentral(gdk) w=%d h=%d  FWidget(Box) w=%d h=%d  LCL ClientH=%d',
+      [dbgsName(ACtl.LCLObject), AGdkRect^.width, AGdkRect^.height,
+       FWAlloc.width, FWAlloc.height,
+       ACtl.LCLObject.ClientHeight]));
+  end;
+  {$ENDIF}
 
   if (uWidth <> HSize) or (uHeight <> VSize) then
     PGtkLayout(aWidget)^.set_size(HSize, VSize);
 
-  if not TGtk3Widget(Data).InUpdate and TGtk3Widget(Data).LCLObject.ClientRectNeedsInterfaceUpdate then
+  if not (csDesigning in ACtl.LCLObject.ComponentState) then
+    exit;
+
+  //designer (at least docked form editor) need this
+  if not ACtl.InUpdate then
   begin
-    {$IFDEF GTK3DEBUGRESIZE}
-    writeln('===> TabSheetLayoutSizeAllocate is calling  TGtk3Widget(Data).LCLObject.DoAdjustClientRectChange !!!! Visible=',TGtk3Widget(Data).Visible);
-    {$ENDIF}
-    TGtk3Widget(Data).LCLObject.DoAdjustClientRectChange;
+    (*IMPORTANT:
+     ClientRectNeedsInterfaceUpdate stays False between resizes because TGtk3Page
+     never receives LM_SIZE.ConnectSizeAllocateSignal does not call inherited, so
+     TGtk3Widget.SizeAllocate is never connected for TTabSheet. When the GtkLayout
+     allocation changes (resize, initial layout), children are not notified unless
+     we also check whether the allocation height differs from what LCL last recorded.
+     InvalidateClientRectCache(False) sets the flag so DoAdjustClientRectChange
+     proceeds; the loop self-terminates because on the next pass ClientHeight equals
+     AGdkRect^.Height and neither condition fires. zeljan*)
+    if ACtl.LCLObject.ClientRectNeedsInterfaceUpdate or
+       (ACtl.LCLObject.ClientHeight <> AGdkRect^.Height) then
+    begin
+      if not ACtl.LCLObject.ClientRectNeedsInterfaceUpdate then
+        ACtl.LCLObject.InvalidateClientRectCache(False);
+      {$IFDEF GTK3DEBUGRESIZE}
+      writeln('===> TabSheetLayoutSizeAllocate is calling DoAdjustClientRectChange !!!! Visible=', ACtl.Visible);
+      {$ENDIF}
+      ACtl.LCLObject.DoAdjustClientRectChange;
+      (*IMPORTANT:
+       Realign propagates the corrected ClientHeight to alClient/alTop/etc children.
+       DoAdjustClientRectChange only calls AdjustSize (no-op for AutoSize=False) and
+       Resize (OnResize event only) - it does NOT call AlignControls. Without this
+       Realign, an alClient child (e.g. TSourcePageControl inside TSrcEditTabSheet)
+       keeps the stale height from the initial wrong allocation and is never
+       re-aligned to the corrected ClientHeight. zeljan*)
+      TWinControl(ACtl.LCLObject).Realign;
+    end;
   end;
 end;
 
@@ -5882,28 +5922,55 @@ function TGtk3Page.getClientRect: TRect;
 var
   AParent: PGtkWidget;
   AParentObject: TGtk3Widget;
+  Notebook: PGtkWidget;
+  Alloc: TGtkAllocation;
+  vX, vY: integer;
 begin
+  vX := 0;
+  vY := 0;
   Result := Rect(0, 0, 0, 0);
-  if Assigned(LCLObject.Parent) and (LCLObject.Parent.HandleAllocated) then
-  begin
-    if not WidgetMapped then
-    begin
-      Result :=  TGtk3Widget(LCLObject.Parent.Handle).getClientRect;
-      exit;
-    end;
-  end;
 
   if not WidgetMapped then
   begin
+    if Assigned(LCLObject.Parent) and LCLObject.Parent.HandleAllocated then
+      Exit(TGtk3Widget(LCLObject.Parent.Handle).getClientRect);
     AParent := Widget^.get_parent;
     AParentObject := TGtk3Widget(HwndFromGtkWidget(AParent));
     if AParentObject <> nil then
       Result := AParentObject.getClientRect
     else
       Result := inherited getClientRect;
-  end else
+    Exit;
+  end;
+
+  if not Assigned(FCentralWidget) then
+  begin
     Result := inherited getClientRect;
-  // DebugLn('TGtk3Page.GetClientRect Result=',dbgs(Result),' Realized ',dbgs(getContainerWidget^.get_realized));
+    Exit;
+  end;
+
+  gtk_widget_get_allocation(FCentralWidget, @Alloc);
+
+  (*This killed me for weeks:
+   Translate (0,0) of FCentralWidget into the GtkNotebook coordinate system.
+   (vX, vY) is where the content area starts relative to the notebook origin,
+   i.e. the tab-bar width (LEFT tabs) or height (TOP tabs) including CSS borders.
+   GTK3 over-allocates FCentralWidget to the full notebook rect when the tab bar
+   precedes the content (TOP: vY > 0, LEFT: vX > 0). Subtracting the offsets
+   gives the true client dimensions available to LCL children.
+   For BOTTOM/RIGHT tabs the content starts at (0,0) so vX=vY=0 and the
+   allocation is already correct - the subtraction is a no-op. zeljan*)
+  Notebook := gtk_widget_get_ancestor(FCentralWidget, gtk_notebook_get_type());
+  if Assigned(Notebook) and
+     gtk_widget_translate_coordinates(FCentralWidget, Notebook, 0, 0, @vX, @vY) then
+    Result := Rect(0, 0, Alloc.width - vX, Alloc.height - vY)
+  else
+    Result := Rect(0, 0, Alloc.width, Alloc.height);
+
+  {$IFDEF GTK3DEBUGLAYOUT}
+  writeln(Format('getClientRect[TGtk3Page] %s: vY=%d OrigH=%d ClientH=%d',
+    [dbgsName(LCLObject), vY, Alloc.height, Result.Bottom]));
+  {$ENDIF}
 end;
 
 procedure TGtk3Page.setTabImage(aBitmap: TBitmap);
