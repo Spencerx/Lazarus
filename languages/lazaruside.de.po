@@ -8005,10 +8005,6 @@ msgstr "%s(%s,%s) fehlende Include-Datei"
 msgid "Delphi Name"
 msgstr "Delphi Name"
 
-#: lazarusidestrconsts.lisconvdelphipackagenameexists
-msgid "Package name exists"
-msgstr "Package-Name existiert"
-
 #: lazarusidestrconsts.lisconvdelphipackagerequired
 #, object-pascal-format
 msgid "Package %s is required but not installed in Lazarus! Install it later."
@@ -8034,10 +8030,10 @@ msgctxt "lazarusidestrconsts.lisconvdelphireplacedunitinusessection"
 msgid "Replaced unit \"%s\" with \"%s\" in uses section."
 msgstr "Unit \"%s\" mit \"%s\" im uses Abschnitt ersetzt."
 
-#: lazarusidestrconsts.lisconvdelphithereisalreadyapackagewiththenamepleaseclosethispa
+#: lazarusidestrconsts.lisconvdelphithereisalreadyapackage
 #, object-pascal-format
-msgid "There is already a package with the name \"%s\"%sPlease close this package first."
-msgstr "Es gibt bereits ein Package namens \"%s\"%sBitte schließen sie zuerst dieses Package."
+msgid "There is already a package with the name \"%s\""
+msgstr ""
 
 #: lazarusidestrconsts.lisconvdelphiunitnameexistsinlcl
 msgid "Unitname exists in LCL"
